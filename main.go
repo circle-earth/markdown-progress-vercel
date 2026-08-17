@@ -19,6 +19,10 @@ type Data struct {
 	Label           string
 	Progress        int
 	PickedColor     string
+	TotalWidth      float64
+	TextX           float64
+	TextAnchor      string
+	TextColor       string
 }
 
 const (
@@ -28,7 +32,7 @@ const (
 	cacheControlValue = "public, max-age=300"
 	maxLabelRunes     = 64
 
-	svgTemplate = `<svg width="90.0" height="20" xmlns="http://www.w3.org/2000/svg">
+	svgTemplate = `<svg width="{{.TotalWidth}}" height="20" xmlns="http://www.w3.org/2000/svg">
   <linearGradient id="a" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".2"/>
     <stop offset="1" stop-opacity=".1"/>
@@ -36,8 +40,8 @@ const (
   <rect rx="4" x="0" width="90.0" height="20" fill="{{.BackgroundColor}}"/>
   <rect rx="4" x="0" width="{{.Progress}}" height="20" fill="{{.PickedColor}}"/>
   <rect rx="4" width="90.0" height="20" fill="url(#a)"/>
-  <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
-    <text x="45.0" y="14">
+  <g fill="{{.TextColor}}" text-anchor="{{.TextAnchor}}" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
+    <text x="{{.TextX}}" y="14">
       {{.Label}}
     </text>
   </g>
@@ -204,11 +208,39 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		label = customLabel
 	}
 
+	// Detached mode layout logic (?d)
+	_, hasD := r.URL.Query()["d"]
+	totalWidth := totalBarWidth
+	textX := 45.0
+	textAnchor := "middle"
+	textColor := "#fff"
+
+	if hasD {
+		runeCount := utf8.RuneCountInString(label)
+		textExtraWidth := float64(runeCount) * 8.0
+		if textExtraWidth < 30.0 {
+			textExtraWidth = 30.0
+		}
+		totalWidth = totalBarWidth + 8.0 + textExtraWidth
+		textX = 98.0
+		textAnchor = "start"
+		textColor = "#333"
+	}
+
+	customTextColor, ok := parseOptionalColor(r.URL.Query().Get("textColor"))
+	if ok && customTextColor != "" {
+		textColor = customTextColor
+	}
+
 	data := Data{
 		BackgroundColor: grey,
 		Label:           label,
 		Progress:        percentageToWidth(percentage),
 		PickedColor:     pickedColor,
+		TotalWidth:      totalWidth,
+		TextX:           textX,
+		TextAnchor:      textAnchor,
+		TextColor:       textColor,
 	}
 
 	buf := new(bytes.Buffer)
