@@ -15,14 +15,16 @@ import (
 )
 
 type Data struct {
-	BackgroundColor string
-	Label           string
-	Progress        int
-	PickedColor     string
-	TotalWidth      float64
-	TextX           float64
-	TextAnchor      string
-	TextColor       string
+	BackgroundColor    string
+	Label              string
+	Progress           int
+	PickedColor        string
+	Detached           bool
+	HasCustomTextColor bool
+	TotalWidth         float64
+	TextX              float64
+	TextAnchor         string
+	TextColor          string
 }
 
 const (
@@ -33,6 +35,25 @@ const (
 	maxLabelRunes     = 64
 
 	svgTemplate = `<svg width="{{.TotalWidth}}" height="20" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .progress-text {
+      font-family: DejaVu Sans,Verdana,Geneva,sans-serif;
+      font-size: 11px;
+      fill: {{.TextColor}};
+    }
+    {{if and .Detached (not .HasCustomTextColor)}}
+    @media (prefers-color-scheme: dark) {
+      .progress-text {
+        fill: #e6edf3;
+      }
+    }
+    @media (prefers-color-scheme: light) {
+      .progress-text {
+        fill: #24292f;
+      }
+    }
+    {{end}}
+  </style>
   <linearGradient id="a" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".2"/>
     <stop offset="1" stop-opacity=".1"/>
@@ -40,8 +61,8 @@ const (
   <rect rx="4" x="0" width="90.0" height="20" fill="{{.BackgroundColor}}"/>
   <rect rx="4" x="0" width="{{.Progress}}" height="20" fill="{{.PickedColor}}"/>
   <rect rx="4" width="90.0" height="20" fill="url(#a)"/>
-  <g fill="{{.TextColor}}" text-anchor="{{.TextAnchor}}" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
-    <text x="{{.TextX}}" y="14">
+  <g text-anchor="{{.TextAnchor}}">
+    <text class="progress-text" x="{{.TextX}}" y="14">
       {{.Label}}
     </text>
   </g>
@@ -216,31 +237,31 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	textColor := "#fff"
 
 	if hasD {
-		runeCount := utf8.RuneCountInString(label)
-		textExtraWidth := float64(runeCount) * 8.0
-		if textExtraWidth < 30.0 {
-			textExtraWidth = 30.0
-		}
-		totalWidth = totalBarWidth + 8.0 + textExtraWidth
-		textX = 98.0
+		// Fixed width 145.0 so all SVGs have identical width and scale evenly in Markdown
+		totalWidth = 145.0
+		textX = 96.0
 		textAnchor = "start"
-		textColor = "#333"
+		textColor = "#24292f" // Default light mode text color
 	}
 
+	hasCustomTextColor := false
 	customTextColor, ok := parseOptionalColor(r.URL.Query().Get("textColor"))
 	if ok && customTextColor != "" {
 		textColor = customTextColor
+		hasCustomTextColor = true
 	}
 
 	data := Data{
-		BackgroundColor: grey,
-		Label:           label,
-		Progress:        percentageToWidth(percentage),
-		PickedColor:     pickedColor,
-		TotalWidth:      totalWidth,
-		TextX:           textX,
-		TextAnchor:      textAnchor,
-		TextColor:       textColor,
+		BackgroundColor:    grey,
+		Label:              label,
+		Progress:           percentageToWidth(percentage),
+		PickedColor:        pickedColor,
+		Detached:           hasD,
+		HasCustomTextColor: hasCustomTextColor,
+		TotalWidth:         totalWidth,
+		TextX:              textX,
+		TextAnchor:         textAnchor,
+		TextColor:          textColor,
 	}
 
 	buf := new(bytes.Buffer)
