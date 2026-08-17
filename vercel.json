@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/progress/:value",
+      "destination": "/api/index?value=:value"
+    },
+    {
+      "source": "/:value",
+      "destination": "/api/index?value=:value"
+    }
+  ]
+}
