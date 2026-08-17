@@ -63,3 +63,5 @@ typings/
 #Example of color bars
 colors-example/
 .vercel
+
+*.exe
