@@ -34,7 +34,7 @@ const (
 	minPercentage     = 0.0
 	maxPercentage     = 100.0
 	totalBarWidth     = 90.0
-	cacheControlValue = "public, max-age=300"
+	cacheControlValue = "public, max-age=300, s-maxage=300"
 	maxLabelRunes     = 64
 
 	svgTemplate = `<svg width="{{.TotalWidth}}" height="20" xmlns="http://www.w3.org/2000/svg">
@@ -140,6 +140,12 @@ func setSVGSize(svg string, size int) string {
 }
 
 func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	iconName = strings.ToLower(strings.TrimSpace(iconName))
 	iconName = strings.TrimSuffix(iconName, ".svg")
 
@@ -185,7 +191,12 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
-	w.Header().Set("Cache-Control", "public, max-age=86400, s-maxage=86400")
+	w.Header().Set("Cache-Control", cacheControlValue)
+
+	if r.Method == http.MethodHead {
+		return
+	}
+
 	_, _ = w.Write([]byte(svgContent))
 }
 
