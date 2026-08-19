@@ -198,6 +198,76 @@ var (
 		"html":               "HTML5",
 		"css":                "CSS3",
 	}
+
+	brandColorMap = map[string]string{
+		"vscode":             "#007ACC",
+		"visual-studio-code": "#007ACC",
+		"cursor":             "#1E1E1E",
+		"claude":             "#D97757",
+		"anthropic":          "#D97757",
+		"claudecode":         "#D97757",
+		"antigravity":        "#00F2FE",
+		"acode":              "#1E88E5",
+		"intellij":           "#FE2857",
+		"idea":               "#FE2857",
+		"pycharm":            "#21D789",
+		"webstorm":           "#00CDD7",
+		"phpstorm":           "#B052C0",
+		"clion":              "#21D789",
+		"rider":              "#E21245",
+		"rubymine":           "#FE2857",
+		"goland":             "#00ADD8",
+		"datagrip":           "#21D789",
+		"fleet":              "#6366F1",
+		"androidstudio":      "#3DDC84",
+		"android-studio":     "#3DDC84",
+		"xcode":              "#147EFB",
+		"vim":                "#019833",
+		"neovim":             "#57A143",
+		"emacs":              "#7F5AB6",
+		"sublime":            "#FF9800",
+		"sublimetext":        "#FF9800",
+		"atom":               "#66595C",
+		"replit":             "#F26207",
+		"zed":                "#FF5722",
+		"windsurf":           "#09B6A2",
+		"codeium":            "#09B6A2",
+		"vscodium":           "#2F80ED",
+		"warp":               "#0066FF",
+		"visualstudio":       "#5C2D91",
+		"vs":                 "#5C2D91",
+		"eclipse":            "#2C2255",
+		"qt":                 "#41CD52",
+		"arduino":            "#00979D",
+		"xamarin":            "#3498DB",
+		"terminal":           "#1E1E1E",
+		"word":               "#185ABD",
+		"excel":              "#107C41",
+		"powerpoint":         "#C43E1C",
+		"edge":               "#0078D7",
+		"textmate":           "#212121",
+		"nova":               "#8E44AD",
+		"wpsoffice":          "#FF334B",
+		"node":               "#339933",
+		"nodejs":             "#339933",
+		"python":             "#3776AB",
+		"py":                 "#3776AB",
+		"go":                 "#00ADD8",
+		"golang":             "#00ADD8",
+		"typescript":         "#3178C6",
+		"ts":                 "#3178C6",
+		"javascript":         "#F7DF1E",
+		"js":                 "#F7DF1E",
+		"react":              "#61DAFB",
+		"reactjs":            "#61DAFB",
+		"rust":               "#333333",
+		"rs":                 "#333333",
+		"docker":             "#2496ED",
+		"git":                "#F05032",
+		"json":               "#292929",
+		"html":               "#E34F26",
+		"css":                "#1572B6",
+	}
 )
 
 func getDisplayName(raw string) string {
@@ -206,7 +276,6 @@ func getDisplayName(raw string) string {
 	if title, exists := displayNameMap[clean]; exists {
 		return title
 	}
-	// Capitalize words as fallback
 	parts := strings.Split(clean, "-")
 	for i, p := range parts {
 		if len(p) > 0 {
@@ -216,12 +285,15 @@ func getDisplayName(raw string) string {
 	return strings.Join(parts, " ")
 }
 
-func createPillBadge(innerSVG string, displayName string, bgColor string, textColor string) string {
-	if bgColor == "" {
-		bgColor = "#24292f" // Dark sleek GitHub badge style
+func createProgressStyleBadge(innerSVG string, keyName string, displayName string, customBg string, customTextColor string) string {
+	boxColor := "#555"
+	if clean := strings.ToLower(strings.TrimSpace(keyName)); clean != "" {
+		if bc, exists := brandColorMap[clean]; exists {
+			boxColor = bc
+		}
 	}
-	if textColor == "" {
-		textColor = "#ffffff"
+	if customBg != "" {
+		boxColor = customBg
 	}
 
 	cleanInner := innerSVG
@@ -236,24 +308,55 @@ func createPillBadge(innerSVG string, displayName string, bgColor string, textCo
 		cleanInner = strings.Replace(cleanInner, "<svg", `<svg preserveAspectRatio="xMidYMid meet"`, 1)
 	}
 
+	boxWidth := 28
+	textXPos := boxWidth + 6
 	approxCharWidth := 6.8
 	textWidth := float64(utf8.RuneCountInString(displayName)) * approxCharWidth
-	totalWidth := int(25.0 + textWidth + 10.0)
+	totalWidth := int(float64(textXPos) + textWidth + 8.0)
 
-	badgeSVG := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="20" viewBox="0 0 %d 20">
-  <linearGradient id="b" x2="0" y2="100%%">
-    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+	textColorStyle := `fill: #24292f;`
+	if customTextColor != "" {
+		textColorStyle = fmt.Sprintf("fill: %s;", customTextColor)
+	}
+
+	badgeSVG := fmt.Sprintf(`<svg width="%d" height="20" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .badge-text {
+      font-family: DejaVu Sans,Verdana,Geneva,sans-serif;
+      font-size: 11px;
+      %s
+    }
+    %s
+  </style>
+  <linearGradient id="a" x2="0" y2="100%%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".2"/>
     <stop offset="1" stop-opacity=".1"/>
   </linearGradient>
-  <rect rx="4" width="%d" height="20" fill="%s"/>
-  <rect rx="4" width="%d" height="20" fill="url(#b)"/>
-  <g transform="translate(4, 2)">
+  <rect rx="4" x="0" width="%d" height="20" fill="%s"/>
+  <rect rx="4" width="%d" height="20" fill="url(#a)"/>
+  <g transform="translate(6, 2)">
     %s
   </g>
-  <text x="25" y="14" fill="%s" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11" font-weight="bold">
-    %s
-  </text>
-</svg>`, totalWidth, totalWidth, totalWidth, bgColor, totalWidth, cleanInner, textColor, displayName)
+  <g text-anchor="start">
+    <text class="badge-text" x="%d" y="14">
+      %s
+    </text>
+  </g>
+</svg>`, totalWidth, textColorStyle, func() string {
+		if customTextColor != "" {
+			return ""
+		}
+		return `@media (prefers-color-scheme: dark) {
+      .badge-text {
+        fill: #e6edf3;
+      }
+    }
+    @media (prefers-color-scheme: light) {
+      .badge-text {
+        fill: #24292f;
+      }
+    }`
+	}(), boxWidth, boxColor, boxWidth, cleanInner, textXPos, displayName)
 
 	return badgeSVG
 }
@@ -328,7 +431,7 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		if customLabel := r.URL.Query().Get("label"); customLabel != "" {
 			displayName = customLabel
 		}
-		finalSVG = createPillBadge(rawSVG, displayName, bgQuery, textColorQuery)
+		finalSVG = createProgressStyleBadge(rawSVG, ideName, displayName, bgQuery, textColorQuery)
 	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
@@ -400,7 +503,7 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		if customLabel := r.URL.Query().Get("label"); customLabel != "" {
 			displayName = customLabel
 		}
-		finalSVG = createPillBadge(rawSVG, displayName, bgQuery, textColorQuery)
+		finalSVG = createProgressStyleBadge(rawSVG, iconName, displayName, bgQuery, textColorQuery)
 	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
