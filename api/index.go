@@ -41,7 +41,7 @@ const (
 	cacheControlValue = "public, max-age=300, s-maxage=300"
 	maxLabelRunes     = 64
 
-	svgTemplate = `<svg width="{{.TotalWidth}}" height="20" xmlns="http://www.w3.org/2000/svg">
+	svgTemplate = `<svg width="{{.TotalWidth}}" height="20" viewBox="0 0 {{.TotalWidth}} 20" xmlns="http://www.w3.org/2000/svg">
   <style>
     .progress-text {
       font-family: DejaVu Sans,Verdana,Geneva,sans-serif;
@@ -300,7 +300,7 @@ func formatIconSVG(rawSVG string) string {
 	if svgTagStart != -1 && svgTagEnd != -1 && svgTagEnd > svgTagStart {
 		innerContent = rawSVG[svgTagStart+1 : svgTagEnd]
 	}
-	// Center 16x16 icon in the 90.0px colored bar: (90 - 16)/2 = 37
+	// Center 16x16 icon inside left bar at x=37, y=2
 	return fmt.Sprintf(`<svg x="37" y="2" width="16" height="16" %s preserveAspectRatio="xMidYMid meet">%s</svg>`, viewBoxAttr, innerContent)
 }
 
@@ -423,7 +423,7 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		return
 	}
 
-	_, _ = w.Write([]byte(finalSVG))
+	_, _ = w.Write([]byte(buf.Bytes()))
 }
 
 func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
