@@ -302,7 +302,8 @@ func formatIconSVG(rawSVG string, iconX int) string {
 	if svgTagStart != -1 && svgTagEnd != -1 && svgTagEnd > svgTagStart {
 		innerContent = rawSVG[svgTagStart+1 : svgTagEnd]
 	}
-	return fmt.Sprintf(`<svg x="%d" y="2" width="16" height="16" %s preserveAspectRatio="xMidYMid meet">%s</svg>`, iconX, viewBoxAttr, innerContent)
+	// 18px icon size at x=iconX, y=1
+	return fmt.Sprintf(`<svg x="%d" y="1" width="18" height="18" %s preserveAspectRatio="xMidYMid meet">%s</svg>`, iconX, viewBoxAttr, innerContent)
 }
 
 func setSVGSize(svg string, size int) string {
@@ -392,14 +393,14 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 	textX := 54.0
 	textAnchor := "middle"
 	textColor := "#fff"
-	iconX := 6
+	iconX := 4 // 18px icon at x=4 on left side
 
 	if hasD {
 		totalWidth = 145.0 // 145.0px (EXACT SAME AS DETACHED /75?d PROGRESS BAR!)
 		textX = 96.0
 		textAnchor = "start"
 		textColor = "#24292f"
-		iconX = 37
+		iconX = 4 // 18px icon at x=4 on left side
 	}
 
 	hasCustomTextColor := false
@@ -438,7 +439,7 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		return
 	}
 
-	_, _ = w.Write([]byte(buf.Bytes()))
+	_, _ = w.Write(buf.Bytes())
 }
 
 func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
@@ -517,14 +518,14 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 	textX := 54.0
 	textAnchor := "middle"
 	textColor := "#fff"
-	iconX := 6
+	iconX := 4 // 18px icon at x=4 on left side
 
 	if hasD {
 		totalWidth = 145.0 // 145.0px (EXACT SAME AS DETACHED /75?d PROGRESS BAR!)
 		textX = 96.0
 		textAnchor = "start"
 		textColor = "#24292f"
-		iconX = 37
+		iconX = 4 // 18px icon at x=4 on left side
 	}
 
 	hasCustomTextColor := false
@@ -563,7 +564,7 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		return
 	}
 
-	_, _ = w.Write([]byte(buf.Bytes()))
+	_, _ = w.Write(buf.Bytes())
 }
 
 func clampPercentage(percentage float64) float64 {
