@@ -84,8 +84,34 @@ var (
 	svgWidthRegex  = regexp.MustCompile(`(?i)\bwidth="[^"]*"`)
 	svgHeightRegex = regexp.MustCompile(`(?i)\bheight="[^"]*"`)
 
+	// Direct official 1-to-1 multi-color brand SVGs for IDEs
+	ideRegistry = map[string]string{
+		"vscode":        "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vscode/vscode-original.svg",
+		"vs":            "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/visualstudio/visualstudio-plain.svg",
+		"visualstudio":  "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/visualstudio/visualstudio-plain.svg",
+		"intellij":      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/intellij/intellij-original.svg",
+		"idea":          "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/intellij/intellij-original.svg",
+		"pycharm":       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/pycharm/pycharm-original.svg",
+		"webstorm":      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/webstorm/webstorm-original.svg",
+		"phpstorm":      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/phpstorm/phpstorm-original.svg",
+		"clion":         "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/clion/clion-original.svg",
+		"rider":         "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/rider/rider-original.svg",
+		"rubymine":      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/rubymine/rubymine-original.svg",
+		"goland":        "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original.svg",
+		"datagrip":      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/datagrip/datagrip-original.svg",
+		"androidstudio": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/androidstudio/androidstudio-original.svg",
+		"android-studio": "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/androidstudio/androidstudio-original.svg",
+		"xcode":         "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/xcode/xcode-original.svg",
+		"eclipse":       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/eclipse/eclipse-original.svg",
+		"vim":           "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vim/vim-original.svg",
+		"atom":          "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/atom/atom-original.svg",
+		"emacs":         "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/emacs/emacs-original.svg",
+		"qt":            "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/qt/qt-original.svg",
+		"arduino":       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/arduino/arduino-original.svg",
+		"xamarin":       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/xamarin/xamarin-original.svg",
+	}
+
 	iconAliases = map[string]string{
-		// Languages & Tech Stack
 		"node":       "file_type_node",
 		"nodejs":     "file_type_node",
 		"js":         "file_type_node",
@@ -124,31 +150,6 @@ var (
 		"yml":        "file_type_yaml",
 		"md":         "file_type_markdown",
 		"markdown":   "file_type_markdown",
-
-		// IDEs & Code Editors
-		"vscode":        "file_type_vscode",
-		"vs":            "file_type_visualstudio",
-		"visualstudio":  "file_type_visualstudio",
-		"idea":          "file_type_idea",
-		"intellij":      "file_type_idea",
-		"pycharm":       "file_type_pycharm",
-		"webstorm":      "file_type_webstorm",
-		"phpstorm":      "file_type_phpstorm",
-		"clion":         "file_type_clion",
-		"rider":         "file_type_rider",
-		"rubymine":      "file_type_rubymine",
-		"goland":        "file_type_goland",
-		"datagrip":      "file_type_datagrip",
-		"androidstudio": "file_type_android-studio",
-		"android-studio": "file_type_android-studio",
-		"xcode":         "file_type_xcode",
-		"eclipse":       "file_type_eclipse",
-		"vim":           "file_type_vim",
-		"neovim":        "file_type_neovim",
-		"sublime":       "file_type_sublime",
-		"sublimetext":   "file_type_sublime",
-		"atom":          "file_type_atom",
-		"emacs":         "file_type_emacs",
 	}
 )
 
@@ -163,6 +164,60 @@ func setSVGSize(svg string, size int) string {
 		svg = strings.Replace(svg, "<svg", fmt.Sprintf("<svg %s", sizeAttr), 1)
 	}
 	return svg
+}
+
+func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ideName = strings.ToLower(strings.TrimSpace(ideName))
+	ideName = strings.TrimSuffix(ideName, ".svg")
+
+	if ideName == "" {
+		http.Error(w, "IDE name required", http.StatusBadRequest)
+		return
+	}
+
+	cdnURL, exists := ideRegistry[ideName]
+	if !exists {
+		// Try devicons directly for unlisted IDE names
+		cdnURL = fmt.Sprintf("https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/%s/%s-original.svg", ideName, ideName)
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(cdnURL)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		http.Error(w, "IDE icon not found", http.StatusNotFound)
+		return
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "failed to read icon", http.StatusInternalServerError)
+		return
+	}
+
+	svgContent := string(bodyBytes)
+
+	sizeStr := r.URL.Query().Get("size")
+	if sizeStr != "" {
+		if sizeVal, err := strconv.Atoi(sizeStr); err == nil && sizeVal > 0 && sizeVal <= 512 {
+			svgContent = setSVGSize(svgContent, sizeVal)
+		}
+	}
+
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=86400, s-maxage=86400")
+
+	if r.Method == http.MethodHead {
+		return
+	}
+
+	_, _ = w.Write([]byte(svgContent))
 }
 
 func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
@@ -187,31 +242,17 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		targetIcon = "file_type_" + iconName
 	}
 
+	cdnURL := fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", targetIcon)
+
 	client := &http.Client{Timeout: 5 * time.Second}
-
-	urlsToTry := []string{
-		fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", targetIcon),
-		fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", iconName),
-		fmt.Sprintf("https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/%s.svg", iconName),
-		fmt.Sprintf("https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/%s.svg", strings.ReplaceAll(iconName, "-", "")),
-	}
-
-	var resp *http.Response
-	var err error
-
-	for _, u := range urlsToTry {
-		resp, err = client.Get(u)
-		if err == nil && resp.StatusCode == http.StatusOK {
-			break
+	resp, err := client.Get(cdnURL)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		fallbackURL := fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", iconName)
+		resp, err = client.Get(fallbackURL)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			http.Error(w, "icon not found", http.StatusNotFound)
+			return
 		}
-		if resp != nil {
-			resp.Body.Close()
-		}
-	}
-
-	if resp == nil || resp.StatusCode != http.StatusOK {
-		http.Error(w, "icon not found", http.StatusNotFound)
-		return
 	}
 	defer resp.Body.Close()
 
@@ -305,6 +346,18 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ideParam := r.URL.Query().Get("ide")
+	if ideParam != "" {
+		handleIDEIcon(w, r, ideParam)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/ide/") {
+		ideName := strings.TrimPrefix(r.URL.Path, "/ide/")
+		handleIDEIcon(w, r, ideName)
 		return
 	}
 
@@ -460,6 +513,10 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/ide/", func(w http.ResponseWriter, r *http.Request) {
+		ideName := strings.TrimPrefix(r.URL.Path, "/ide/")
+		handleIDEIcon(w, r, ideName)
+	})
 	mux.HandleFunc("/file/", func(w http.ResponseWriter, r *http.Request) {
 		iconName := strings.TrimPrefix(r.URL.Path, "/file/")
 		handleFileIcon(w, r, iconName)

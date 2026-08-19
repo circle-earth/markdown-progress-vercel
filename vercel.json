@@ -2,6 +2,10 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/ide/:name*",
+      "destination": "/api/index?ide=:name"
+    },
+    {
       "source": "/file/:name*",
       "destination": "/api/index?file=:name"
     },
