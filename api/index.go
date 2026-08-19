@@ -85,6 +85,7 @@ var (
 
 	svgWidthRegex  = regexp.MustCompile(`(?i)\bwidth="[^"]*"`)
 	svgHeightRegex = regexp.MustCompile(`(?i)\bheight="[^"]*"`)
+	viewBoxRegex   = regexp.MustCompile(`(?i)viewBox="[^"]*"`)
 
 	iconAliases = map[string]string{
 		"node":       "file_type_node",
@@ -284,27 +285,26 @@ func getDisplayName(raw string) string {
 }
 
 func createProgressStyleBadge(innerSVG string, keyName string, displayName string, customBg string, customTextColor string, isDetached bool) string {
-	brandColor := "#555"
-	if clean := strings.ToLower(strings.TrimSpace(keyName)); clean != "" {
-		if bc, exists := brandColorMap[clean]; exists {
-			brandColor = bc
-		}
-	}
+	// Left box background color: #333 by default for 100% icon contrast, or brand color if specified/custom
+	leftBg := "#333"
 	if customBg != "" {
-		brandColor = customBg
+		leftBg = customBg
 	}
 
 	cleanInner := innerSVG
-	if svgWidthRegex.MatchString(cleanInner) {
-		cleanInner = svgWidthRegex.ReplaceAllString(cleanInner, `width="16"`)
-		cleanInner = svgHeightRegex.ReplaceAllString(cleanInner, `height="16"`)
-	} else {
-		cleanInner = strings.Replace(cleanInner, "<svg", `<svg width="16" height="16" preserveAspectRatio="xMidYMid meet"`, 1)
+	viewBoxAttr := `viewBox="0 0 24 24"`
+	if match := viewBoxRegex.FindString(cleanInner); match != "" {
+		viewBoxAttr = match
 	}
 
-	if !strings.Contains(cleanInner, "preserveAspectRatio") {
-		cleanInner = strings.Replace(cleanInner, "<svg", `<svg preserveAspectRatio="xMidYMid meet"`, 1)
+	svgTagStart := strings.Index(cleanInner, ">")
+	svgTagEnd := strings.LastIndex(cleanInner, "</svg>")
+	innerContent := cleanInner
+	if svgTagStart != -1 && svgTagEnd != -1 && svgTagEnd > svgTagStart {
+		innerContent = cleanInner[svgTagStart+1 : svgTagEnd]
 	}
+
+	embeddedIcon := fmt.Sprintf(`<svg x="6" y="2" width="16" height="16" %s preserveAspectRatio="xMidYMid meet">%s</svg>`, viewBoxAttr, innerContent)
 
 	leftWidth := 28.0
 	approxCharWidth := 6.8
@@ -314,7 +314,6 @@ func createProgressStyleBadge(innerSVG string, keyName string, displayName strin
 	}
 
 	if isDetached {
-		// Detached mode (?d)
 		totalWidth := int(leftWidth + 6.0 + textWidth + 8.0)
 		textColorStyle := `fill: #24292f;`
 		if customTextColor != "" {
@@ -331,22 +330,20 @@ func createProgressStyleBadge(innerSVG string, keyName string, displayName strin
     .badge-text { font-family: DejaVu Sans,Verdana,Geneva,sans-serif; font-size: 11px; %s }
     %s
   </style>
-  <linearGradient id="a" x2="0" y2="100%%">
+  <linearGradient id="badge_gloss" x2="0" y2="100%%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".2"/>
     <stop offset="1" stop-opacity=".1"/>
   </linearGradient>
   <rect rx="4" x="0" width="28" height="20" fill="%s"/>
-  <rect rx="4" width="28" height="20" fill="url(#a)"/>
-  <g transform="translate(6, 2)">
-    %s
-  </g>
+  <rect rx="4" width="28" height="20" fill="url(#badge_gloss)"/>
+  %s
   <g text-anchor="start">
     <text class="badge-text" x="34" y="14">%s</text>
   </g>
-</svg>`, totalWidth, textColorStyle, mediaQuery, brandColor, cleanInner, displayName)
+</svg>`, totalWidth, textColorStyle, mediaQuery, leftBg, embeddedIcon, displayName)
 	}
 
-	// Full Unified Progress/Shields Badge Mode (Default)
+	// Full Unified Badge Mode (Default)
 	rightWidth := textWidth + 14.0
 	totalWidth := int(leftWidth + rightWidth)
 	textX := leftWidth + (rightWidth / 2.0)
@@ -358,25 +355,23 @@ func createProgressStyleBadge(innerSVG string, keyName string, displayName strin
 	}
 
 	return fmt.Sprintf(`<svg width="%d" height="20" xmlns="http://www.w3.org/2000/svg">
-  <linearGradient id="a" x2="0" y2="100%%">
+  <linearGradient id="badge_gloss" x2="0" y2="100%%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
     <stop offset="1" stop-opacity=".1"/>
   </linearGradient>
-  <clipPath id="r">
+  <clipPath id="badge_clip">
     <rect width="%d" height="20" rx="4"/>
   </clipPath>
-  <g clip-path="url(#r)">
+  <g clip-path="url(#badge_clip)">
     <rect width="28" height="20" fill="%s"/>
     <rect x="28" width="%d" height="20" fill="%s"/>
-    <rect width="%d" height="20" fill="url(#a)"/>
+    <rect width="%d" height="20" fill="url(#badge_gloss)"/>
   </g>
-  <g transform="translate(6, 2)">
-    %s
-  </g>
+  %s
   <g text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11" fill="%s">
     <text x="%.1f" y="14">%s</text>
   </g>
-</svg>`, totalWidth, totalWidth, brandColor, int(rightWidth)+1, rightBg, totalWidth, cleanInner, textColor, textX, displayName)
+</svg>`, totalWidth, totalWidth, leftBg, int(rightWidth)+1, rightBg, totalWidth, embeddedIcon, textColor, textX, displayName)
 }
 
 func setSVGSize(svg string, size int) string {
