@@ -84,7 +84,7 @@ var (
 	svgWidthRegex  = regexp.MustCompile(`(?i)\bwidth="[^"]*"`)
 	svgHeightRegex = regexp.MustCompile(`(?i)\bheight="[^"]*"`)
 
-	// 100% Exact Official Vector SVGs for AI IDEs & Editors (0ms network latency)
+	// 100% Exact Official Vector SVGs for AI IDEs & Editors
 	customIDEIcons = map[string]string{
 		"cursor":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#000000"><path d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1 1 0 0 0-.994 0z"/></svg>`,
 		"claude":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#D97757"><path d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5528h3.7442L10.5363 3.5409Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z"/></svg>`,
@@ -223,17 +223,43 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Get(cdnURL)
 		if err != nil || resp.StatusCode != http.StatusOK {
-			http.Error(w, "IDE icon not found", http.StatusNotFound)
-			return
-		}
-		defer resp.Body.Close()
+			// Iconify API Fallback Engine (Same as circle-earth/icon)
+			iconifyURLs := []string{
+				fmt.Sprintf("https://api.iconify.design/logos/%s.svg", ideName),
+				fmt.Sprintf("https://api.iconify.design/devicon/%s.svg", ideName),
+				fmt.Sprintf("https://api.iconify.design/vscode-icons/%s.svg", ideName),
+				fmt.Sprintf("https://api.iconify.design/simple-icons/%s.svg", ideName),
+			}
 
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			http.Error(w, "failed to read icon", http.StatusInternalServerError)
-			return
+			found := false
+			for _, iconifyURL := range iconifyURLs {
+				resp2, err2 := client.Get(iconifyURL)
+				if err2 == nil && resp2.StatusCode == http.StatusOK {
+					defer resp2.Body.Close()
+					if bodyBytes, errRead := io.ReadAll(resp2.Body); errRead == nil && len(bodyBytes) > 0 {
+						svgContent = string(bodyBytes)
+						found = true
+						break
+					}
+				}
+				if resp2 != nil {
+					resp2.Body.Close()
+				}
+			}
+
+			if !found {
+				http.Error(w, "IDE icon not found", http.StatusNotFound)
+				return
+			}
+		} else {
+			defer resp.Body.Close()
+			bodyBytes, errRead := io.ReadAll(resp.Body)
+			if errRead != nil {
+				http.Error(w, "failed to read icon", http.StatusInternalServerError)
+				return
+			}
+			svgContent = string(bodyBytes)
 		}
-		svgContent = string(bodyBytes)
 	}
 
 	sizeVal := getRequestedSize(r)
