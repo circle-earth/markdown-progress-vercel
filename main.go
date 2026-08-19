@@ -50,6 +50,18 @@ const (
       font-size: 11px;
       fill: {{.TextColor}};
     }
+    {{if and .Detached (not .HasCustomTextColor)}}
+    @media (prefers-color-scheme: dark) {
+      .progress-text {
+        fill: #e6edf3;
+      }
+    }
+    @media (prefers-color-scheme: light) {
+      .progress-text {
+        fill: #24292f;
+      }
+    }
+    {{end}}
   </style>
   <linearGradient id="a" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".2"/>
@@ -381,7 +393,7 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		textColor = customTextColor
 	}
 
-	// Text INSIDE progress bar (TotalWidth = 90.0px, TextX = 54.0)
+	// IDE Badges ALWAYS have text INSIDE progress bar (TotalWidth = 90.0px, TextX = 54.0)
 	data := Data{
 		BackgroundColor:    grey,
 		Label:              displayName,
@@ -490,7 +502,7 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		textColor = customTextColor
 	}
 
-	// Text INSIDE progress bar (TotalWidth = 90.0px, TextX = 54.0)
+	// File Badges ALWAYS have text INSIDE progress bar (TotalWidth = 90.0px, TextX = 54.0)
 	data := Data{
 		BackgroundColor:    grey,
 		Label:              displayName,
@@ -697,10 +709,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		label = customLabel
 	}
 
+	// Detached mode layout logic ONLY for progress bar (?d)
+	_, hasD := r.URL.Query()["d"]
 	totalWidth := totalBarWidth // 90.0px
 	textX := 45.0
 	textAnchor := "middle"
 	textColor := "#fff"
+
+	if hasD {
+		totalWidth = 145.0 // 145.0px for 75?d
+		textX = 96.0       // Text outside at x=96 for 75?d
+		textAnchor = "start"
+		textColor = "#24292f"
+	}
 
 	hasCustomTextColor := false
 	customTextColor, ok := parseOptionalColor(r.URL.Query().Get("textColor"))
@@ -714,7 +735,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		Label:              label,
 		Progress:           percentageToWidth(percentage),
 		PickedColor:        pickedColor,
-		Detached:           false,
+		Detached:           hasD,
 		HasCustomTextColor: hasCustomTextColor,
 		TotalWidth:         totalWidth,
 		TextX:              textX,
