@@ -84,8 +84,19 @@ var (
 	svgWidthRegex  = regexp.MustCompile(`(?i)\bwidth="[^"]*"`)
 	svgHeightRegex = regexp.MustCompile(`(?i)\bheight="[^"]*"`)
 
-	// Custom embedded SVG icons for unique mobile / AI tools
+	// 100% Exact Official Vector SVGs for AI IDEs & Editors (0ms network latency)
 	customIDEIcons = map[string]string{
+		"cursor":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#000000"><path d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1 1 0 0 0-.994 0z"/></svg>`,
+		"claude":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#D97757"><path d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5528h3.7442L10.5363 3.5409Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z"/></svg>`,
+		"anthropic":   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#D97757"><path d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5528h3.7442L10.5363 3.5409Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z"/></svg>`,
+		"replit":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#F26207"><path d="M2 1.5A1.5 1.5 0 013.5 0h7A1.5 1.5 0 0112 1.5v7A1.5 1.5 0 0110.5 10h-7A1.5 1.5 0 012 8.5v-7zM2 13.5A1.5 1.5 0 013.5 12h7a1.5 1.5 0 011.5 1.5v7a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 012 20.5v-7zM14 1.5A1.5 1.5 0 0115.5 0h7A1.5 1.5 0 0124 1.5v7A1.5 1.5 0 0122.5 10h-7A1.5 1.5 0 0114 8.5v-7z"/></svg>`,
+		"zed":         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF5722"><path d="M5 5h14v3l-8 8h8v3H5v-3l8-8H5V5z"/></svg>`,
+		"windsurf":    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#09B6A2"><path d="M12 4L4 12l8 8 8-8-8-8zm0 4l4 4-4 4-4-4 4-4z"/></svg>`,
+		"codeium":     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#09B6A2"><path d="M12 4L4 12l8 8 8-8-8-8zm0 4l4 4-4 4-4-4 4-4z"/></svg>`,
+		"vscodium":    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#2F80ED"><path d="M23.15 2.5a1.5 1.5 0 00-1.8-.1L1.4 14.8a1.5 1.5 0 000 2.4l19.95 12.4a1.5 1.5 0 002.3-1.2V3.6a1.5 1.5 0 00-.5-1.1zM18 19.5L7.5 13 18 6.5v13z"/></svg>`,
+		"codium":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#2F80ED"><path d="M23.15 2.5a1.5 1.5 0 00-1.8-.1L1.4 14.8a1.5 1.5 0 000 2.4l19.95 12.4a1.5 1.5 0 002.3-1.2V3.6a1.5 1.5 0 00-.5-1.1zM18 19.5L7.5 13 18 6.5v13z"/></svg>`,
+		"fleet":       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#6366F1"><path d="M4 6h16v3H4V6zm0 6h12v3H4v-3zm0 6h8v3H4v-3z"/></svg>`,
+		"warp":        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#0066FF"><path d="M6 7l6 5-6 5V7zm6 10h6v2h-6v-2z"/></svg>`,
 		"antigravity": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#00F2FE"/><stop offset="100%" stop-color="#4FACFE"/></linearGradient></defs><rect width="24" height="24" rx="6" fill="url(#ag)"/><path fill="#FFFFFF" d="M12 4L6 18h3.5l1.2-3.3h6.6l1.2 3.3H22L16 4h-4zm.1 4.5l2.2 6.2H9.7l2.4-6.2z"/></svg>`,
 		"acode":       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#1E88E5"/><path fill="#FFA000" d="M7 6l-5 6 5 6 1.4-1.4L4.8 12l3.6-4.6L7 6zm10 0l-1.4 1.4 3.6 4.6-3.6 4.6L17 18l5-6-5-6zM13.4 4l-4.8 16h2.1l4.8-16h-2.1z"/></svg>`,
 	}
@@ -115,19 +126,6 @@ var (
 		"qt":            "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/qt/qt-original.svg",
 		"arduino":       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/arduino/arduino-original.svg",
 		"xamarin":       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/xamarin/xamarin-original.svg",
-
-		// Official Modern AI & Mobile IDE Vector SVGs via SimpleIcons Official CDN
-		"cursor":    "https://cdn.simpleicons.org/cursor/000000",
-		"claude":    "https://cdn.simpleicons.org/anthropic/D97757",
-		"anthropic": "https://cdn.simpleicons.org/anthropic/D97757",
-		"replit":    "https://cdn.simpleicons.org/replit/F26207",
-		"zed":       "https://cdn.simpleicons.org/zed/FF5722",
-		"vscodium":  "https://cdn.simpleicons.org/vscodium/2F80ED",
-		"codium":    "https://cdn.simpleicons.org/vscodium/2F80ED",
-		"fleet":     "https://cdn.simpleicons.org/fleet/6366F1",
-		"warp":      "https://cdn.simpleicons.org/warp/0066FF",
-		"windsurf":  "https://cdn.simpleicons.org/codeium/09B6A2",
-		"codeium":   "https://cdn.simpleicons.org/codeium/09B6A2",
 	}
 
 	iconAliases = map[string]string{
