@@ -128,7 +128,135 @@ var (
 		"md":         "file_type_markdown",
 		"markdown":   "file_type_markdown",
 	}
+
+	displayNameMap = map[string]string{
+		"vscode":             "VS Code",
+		"visual-studio-code": "VS Code",
+		"cursor":             "Cursor",
+		"claude":             "Claude",
+		"anthropic":          "Claude",
+		"claudecode":         "Claude Code",
+		"antigravity":        "Antigravity",
+		"acode":              "Acode",
+		"intellij":           "IntelliJ IDEA",
+		"idea":               "IntelliJ IDEA",
+		"pycharm":            "PyCharm",
+		"webstorm":           "WebStorm",
+		"phpstorm":           "PhpStorm",
+		"clion":              "CLion",
+		"rider":              "Rider",
+		"rubymine":           "RubyMine",
+		"goland":             "GoLand",
+		"datagrip":           "DataGrip",
+		"fleet":              "Fleet",
+		"androidstudio":      "Android Studio",
+		"android-studio":     "Android Studio",
+		"xcode":              "Xcode",
+		"vim":                "Vim",
+		"neovim":             "Neovim",
+		"emacs":              "Emacs",
+		"sublime":            "Sublime Text",
+		"sublimetext":        "Sublime Text",
+		"atom":               "Atom",
+		"replit":             "Replit",
+		"zed":                "Zed",
+		"windsurf":           "Windsurf",
+		"codeium":            "Codeium",
+		"vscodium":           "VSCodium",
+		"warp":               "Warp",
+		"visualstudio":       "Visual Studio",
+		"vs":                 "Visual Studio",
+		"eclipse":            "Eclipse",
+		"qt":                 "Qt Creator",
+		"arduino":            "Arduino",
+		"xamarin":            "Xamarin",
+		"terminal":           "Terminal",
+		"word":               "Word",
+		"excel":              "Excel",
+		"powerpoint":         "PowerPoint",
+		"edge":               "Edge",
+		"textmate":           "TextMate",
+		"nova":               "Nova",
+		"wpsoffice":          "WPS Office",
+		"node":               "Node.js",
+		"nodejs":             "Node.js",
+		"python":             "Python",
+		"py":                 "Python",
+		"go":                 "Go",
+		"golang":             "Go",
+		"typescript":         "TypeScript",
+		"ts":                 "TypeScript",
+		"javascript":         "JavaScript",
+		"js":                 "JavaScript",
+		"react":              "React",
+		"reactjs":            "React",
+		"rust":               "Rust",
+		"rs":                 "Rust",
+		"docker":             "Docker",
+		"git":                "Git",
+		"json":               "JSON",
+		"html":               "HTML5",
+		"css":                "CSS3",
+	}
 )
+
+func getDisplayName(raw string) string {
+	clean := strings.ToLower(strings.TrimSpace(raw))
+	clean = strings.TrimSuffix(clean, ".svg")
+	if title, exists := displayNameMap[clean]; exists {
+		return title
+	}
+	// Capitalize words as fallback
+	parts := strings.Split(clean, "-")
+	for i, p := range parts {
+		if len(p) > 0 {
+			parts[i] = strings.ToUpper(p[:1]) + p[1:]
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+func createPillBadge(innerSVG string, displayName string, bgColor string, textColor string) string {
+	if bgColor == "" {
+		bgColor = "#24292f" // Dark sleek GitHub badge style
+	}
+	if textColor == "" {
+		textColor = "#ffffff"
+	}
+
+	cleanInner := innerSVG
+	if svgWidthRegex.MatchString(cleanInner) {
+		cleanInner = svgWidthRegex.ReplaceAllString(cleanInner, `width="16"`)
+		cleanInner = svgHeightRegex.ReplaceAllString(cleanInner, `height="16"`)
+	} else {
+		cleanInner = strings.Replace(cleanInner, "<svg", `<svg width="16" height="16" preserveAspectRatio="xMidYMid meet"`, 1)
+	}
+
+	if !strings.Contains(cleanInner, "preserveAspectRatio") {
+		cleanInner = strings.Replace(cleanInner, "<svg", `<svg preserveAspectRatio="xMidYMid meet"`, 1)
+	}
+
+	approxCharWidth := 6.8
+	textWidth := float64(utf8.RuneCountInString(displayName)) * approxCharWidth
+	totalWidth := int(25.0 + textWidth + 10.0)
+
+	badgeSVG := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="20" viewBox="0 0 %d 20">
+  <linearGradient id="b" x2="0" y2="100%%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <rect rx="4" width="%d" height="20" fill="%s"/>
+  <rect rx="4" width="%d" height="20" fill="url(#b)"/>
+  <g transform="translate(4, 2)">
+    %s
+  </g>
+  <text x="25" y="14" fill="%s" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11" font-weight="bold">
+    %s
+  </text>
+</svg>`, totalWidth, totalWidth, totalWidth, bgColor, totalWidth, cleanInner, textColor, displayName)
+
+	return badgeSVG
+}
 
 func setSVGSize(svg string, size int) string {
 	if svgWidthRegex.MatchString(svg) {
@@ -152,7 +280,7 @@ func getRequestedSize(r *http.Request) int {
 			return sizeVal
 		}
 	}
-	return 24 // Default size if omitted so markdown images render properly
+	return 24 // Default size if omitted
 }
 
 func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
@@ -183,9 +311,25 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		svgBytes, _ = ideSVGFiles.ReadFile("svg/ide/default.svg")
 	}
 
-	svgContent := string(svgBytes)
-	sizeVal := getRequestedSize(r)
-	svgContent = setSVGSize(svgContent, sizeVal)
+	rawSVG := string(svgBytes)
+	_, isRaw := r.URL.Query()["raw"]
+	bgQuery := r.URL.Query().Get("bg")
+	if bgQuery == "" {
+		bgQuery = r.URL.Query().Get("color")
+	}
+	textColorQuery := r.URL.Query().Get("textColor")
+
+	var finalSVG string
+	if isRaw {
+		sizeVal := getRequestedSize(r)
+		finalSVG = setSVGSize(rawSVG, sizeVal)
+	} else {
+		displayName := getDisplayName(ideName)
+		if customLabel := r.URL.Query().Get("label"); customLabel != "" {
+			displayName = customLabel
+		}
+		finalSVG = createPillBadge(rawSVG, displayName, bgQuery, textColorQuery)
+	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
 	w.Header().Set("Cache-Control", "public, max-age=86400, s-maxage=86400")
@@ -194,7 +338,7 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		return
 	}
 
-	_, _ = w.Write([]byte(svgContent))
+	_, _ = w.Write([]byte(finalSVG))
 }
 
 func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
@@ -239,10 +383,25 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		return
 	}
 
-	svgContent := string(bodyBytes)
+	rawSVG := string(bodyBytes)
+	_, isRaw := r.URL.Query()["raw"]
+	bgQuery := r.URL.Query().Get("bg")
+	if bgQuery == "" {
+		bgQuery = r.URL.Query().Get("color")
+	}
+	textColorQuery := r.URL.Query().Get("textColor")
 
-	sizeVal := getRequestedSize(r)
-	svgContent = setSVGSize(svgContent, sizeVal)
+	var finalSVG string
+	if isRaw {
+		sizeVal := getRequestedSize(r)
+		finalSVG = setSVGSize(rawSVG, sizeVal)
+	} else {
+		displayName := getDisplayName(iconName)
+		if customLabel := r.URL.Query().Get("label"); customLabel != "" {
+			displayName = customLabel
+		}
+		finalSVG = createPillBadge(rawSVG, displayName, bgQuery, textColorQuery)
+	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
 	w.Header().Set("Cache-Control", cacheControlValue)
@@ -251,7 +410,7 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		return
 	}
 
-	_, _ = w.Write([]byte(svgContent))
+	_, _ = w.Write([]byte(finalSVG))
 }
 
 func clampPercentage(percentage float64) float64 {
