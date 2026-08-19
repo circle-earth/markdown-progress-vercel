@@ -2,6 +2,8 @@ package handler
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"path"
@@ -9,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 	"unicode/utf8"
 )
 
@@ -75,7 +78,114 @@ var (
 
 	hexColorPattern  = regexp.MustCompile(`^[0-9a-fA-F]{6}$`)
 	progressTemplate = template.Must(template.New("progress").Parse(svgTemplate))
+
+	svgWidthRegex  = regexp.MustCompile(`(?i)\bwidth="[^"]*"`)
+	svgHeightRegex = regexp.MustCompile(`(?i)\bheight="[^"]*"`)
+
+	iconAliases = map[string]string{
+		"node":       "file_type_node",
+		"nodejs":     "file_type_node",
+		"js":         "file_type_node",
+		"javascript": "file_type_node",
+		"py":         "file_type_python",
+		"python":     "file_type_python",
+		"go":         "file_type_go",
+		"golang":     "file_type_go",
+		"ts":         "file_type_typescript",
+		"typescript": "file_type_typescript",
+		"react":      "file_type_reactjs",
+		"reactjs":    "file_type_reactjs",
+		"jsx":        "file_type_reactjs",
+		"tsx":        "file_type_reactts",
+		"html":       "file_type_html",
+		"css":        "file_type_css",
+		"docker":     "file_type_docker",
+		"dockerfile": "file_type_docker",
+		"git":        "file_type_git",
+		"json":       "file_type_json",
+		"cpp":        "file_type_cpp",
+		"c++":        "file_type_cpp",
+		"c":          "file_type_c",
+		"cs":         "file_type_csharp",
+		"csharp":     "file_type_csharp",
+		"java":       "file_type_java",
+		"rust":       "file_type_rust",
+		"rs":         "file_type_rust",
+		"php":        "file_type_php",
+		"vue":        "file_type_vue",
+		"svelte":     "file_type_svelte",
+		"tailwind":   "file_type_tailwind",
+		"sass":       "file_type_scss",
+		"scss":       "file_type_scss",
+		"yaml":       "file_type_yaml",
+		"yml":        "file_type_yaml",
+		"md":         "file_type_markdown",
+		"markdown":   "file_type_markdown",
+	}
 )
+
+func setSVGSize(svg string, size int) string {
+	sizeAttr := fmt.Sprintf(`width="%d" height="%d"`, size, size)
+	if svgWidthRegex.MatchString(svg) {
+		svg = svgWidthRegex.ReplaceAllString(svg, fmt.Sprintf(`width="%d"`, size))
+	}
+	if svgHeightRegex.MatchString(svg) {
+		svg = svgHeightRegex.ReplaceAllString(svg, fmt.Sprintf(`height="%d"`, size))
+	} else if !svgWidthRegex.MatchString(svg) {
+		svg = strings.Replace(svg, "<svg", fmt.Sprintf("<svg %s", sizeAttr), 1)
+	}
+	return svg
+}
+
+func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
+	iconName = strings.ToLower(strings.TrimSpace(iconName))
+	iconName = strings.TrimSuffix(iconName, ".svg")
+
+	if iconName == "" {
+		http.Error(w, "icon name required", http.StatusBadRequest)
+		return
+	}
+
+	targetIcon := iconName
+	if mapped, exists := iconAliases[iconName]; exists {
+		targetIcon = mapped
+	} else if !strings.HasPrefix(iconName, "file_type_") {
+		targetIcon = "file_type_" + iconName
+	}
+
+	cdnURL := fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", targetIcon)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(cdnURL)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		fallbackURL := fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", iconName)
+		resp, err = client.Get(fallbackURL)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			http.Error(w, "icon not found", http.StatusNotFound)
+			return
+		}
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "failed to read icon", http.StatusInternalServerError)
+		return
+	}
+
+	svgContent := string(bodyBytes)
+
+	sizeStr := r.URL.Query().Get("size")
+	if sizeStr != "" {
+		if sizeVal, err := strconv.Atoi(sizeStr); err == nil && sizeVal > 0 && sizeVal <= 512 {
+			svgContent = setSVGSize(svgContent, sizeVal)
+		}
+	}
+
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=86400, s-maxage=86400")
+	_, _ = w.Write([]byte(svgContent))
+}
 
 func clampPercentage(percentage float64) float64 {
 	if percentage < minPercentage {
@@ -142,6 +252,18 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	fileParam := r.URL.Query().Get("file")
+	if fileParam != "" {
+		handleFileIcon(w, r, fileParam)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/file/") {
+		iconName := strings.TrimPrefix(r.URL.Path, "/file/")
+		handleFileIcon(w, r, iconName)
 		return
 	}
 
@@ -235,11 +357,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	textColor := "#fff"
 
 	if hasD {
-		// Fixed width 145.0 so all SVGs have identical width and scale evenly in Markdown
 		totalWidth = 145.0
 		textX = 96.0
 		textAnchor = "start"
-		textColor = "#24292f" // Default light mode text color
+		textColor = "#24292f"
 	}
 
 	hasCustomTextColor := false
