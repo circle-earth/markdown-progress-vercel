@@ -82,26 +82,15 @@ var (
 	svgWidthRegex  = regexp.MustCompile(`(?i)\bwidth="[^"]*"`)
 	svgHeightRegex = regexp.MustCompile(`(?i)\bheight="[^"]*"`)
 
-	// Custom embedded SVG icons for AI IDEs, Modern Editors, and VS Code Ribbon
+	// Custom embedded SVG icons for unique mobile / AI tools
 	customIDEIcons = map[string]string{
-		"vscode":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><title>file_type_vscode</title><path d="M29.01,5.03,23.244,2.254a1.742,1.742,0,0,0-1.989.338L2.38,19.8A1.166,1.166,0,0,0,2.3,21.447c.025.027.05.053.077.077l1.541,1.4a1.165,1.165,0,0,0,1.489.066L28.142,5.75A1.158,1.158,0,0,1,30,6.672V6.605A1.748,1.748,0,0,0,29.01,5.03Z" style="fill:#0065a9"/><path d="M29.01,26.97l-5.766,2.777a1.745,1.745,0,0,1-1.989-.338L2.38,12.2A1.166,1.166,0,0,1,2.3,10.553c.025-.027.05-.053.077-.077l1.541-1.4A1.165,1.165,0,0,1,5.41,9.01L28.142,26.25A1.158,1.158,0,0,0,30,25.328V25.4A1.749,1.749,0,0,1,29.01,26.97Z" style="fill:#007acc"/><path d="M23.244,29.747a1.745,1.745,0,0,1-1.989-.338A1.025,1.025,0,0,0,23,28.684V3.316a1.024,1.024,0,0,0-1.749-.724,1.744,1.744,0,0,1,1.989-.339l5.765,2.772A1.748,1.748,0,0,1,30,6.6V25.4a1.748,1.748,0,0,1-.991,1.576Z" style="fill:#1f9cf0"/></svg>`,
-		"cursor":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#000" d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.3L19.5 8 12 11.7 4.5 8 12 4.3zM4 9.5l7 3.5v7.2l-7-3.5V9.5zm9 10.7v-7.2l7-3.5v7.2l-7 3.5z"/></svg>`,
-		"claude":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#D97757" d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"/></svg>`,
-		"anthropic":   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#D97757" d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"/></svg>`,
 		"antigravity": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#00F2FE"/><stop offset="100%" stop-color="#4FACFE"/></linearGradient></defs><rect width="24" height="24" rx="6" fill="url(#ag)"/><path fill="#FFFFFF" d="M12 4L6 18h3.5l1.2-3.3h6.6l1.2 3.3H22L16 4h-4zm.1 4.5l2.2 6.2H9.7l2.4-6.2z"/></svg>`,
 		"acode":       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#1E88E5"/><path fill="#FFA000" d="M7 6l-5 6 5 6 1.4-1.4L4.8 12l3.6-4.6L7 6zm10 0l-1.4 1.4 3.6 4.6-3.6 4.6L17 18l5-6-5-6zM13.4 4l-4.8 16h2.1l4.8-16h-2.1z"/></svg>`,
-		"windsurf":    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#09B6A2"/><path fill="#FFF" d="M12 4L4 12l8 8 8-8-8-8zm0 4l4 4-4 4-4-4 4-4z"/></svg>`,
-		"codeium":     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#09B6A2"/><path fill="#FFF" d="M12 4L4 12l8 8 8-8-8-8zm0 4l4 4-4 4-4-4 4-4z"/></svg>`,
-		"zed":         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#0D0D0D"/><path fill="#FF5722" d="M5 5h14v3l-8 8h8v3H5v-3l8-8H5V5z"/></svg>`,
-		"replit":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#F26207" d="M2 1.5A1.5 1.5 0 013.5 0h7A1.5 1.5 0 0112 1.5v7A1.5 1.5 0 0110.5 10h-7A1.5 1.5 0 012 8.5v-7zM2 13.5A1.5 1.5 0 013.5 12h7a1.5 1.5 0 011.5 1.5v7a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 012 20.5v-7zM14 1.5A1.5 1.5 0 0115.5 0h7A1.5 1.5 0 0124 1.5v7A1.5 1.5 0 0122.5 10h-7A1.5 1.5 0 0114 8.5v-7z"/></svg>`,
-		"vscodium":    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#2F80ED" d="M23.15 2.5a1.5 1.5 0 00-1.8-.1L1.4 14.8a1.5 1.5 0 000 2.4l19.95 12.4a1.5 1.5 0 002.3-1.2V3.6a1.5 1.5 0 00-.5-1.1zM18 19.5L7.5 13 18 6.5v13z"/></svg>`,
-		"codium":      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#2F80ED" d="M23.15 2.5a1.5 1.5 0 00-1.8-.1L1.4 14.8a1.5 1.5 0 000 2.4l19.95 12.4a1.5 1.5 0 002.3-1.2V3.6a1.5 1.5 0 00-.5-1.1zM18 19.5L7.5 13 18 6.5v13z"/></svg>`,
-		"fleet":       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#18181B"/><path fill="#6366F1" d="M4 6h16v3H4V6zm0 6h12v3H4v-3zm0 6h8v3H4v-3z"/></svg>`,
-		"warp":        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#0066FF"/><path fill="#FFF" d="M6 7l6 5-6 5V7zm6 10h6v2h-6v-2z"/></svg>`,
 	}
 
 	// Direct official 1-to-1 multi-color brand SVGs for IDEs
 	ideRegistry = map[string]string{
+		"vscode":        "https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/file_type_vscode.svg",
 		"vs":            "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/visualstudio/visualstudio-plain.svg",
 		"visualstudio":  "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/visualstudio/visualstudio-plain.svg",
 		"intellij":      "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/intellij/intellij-original.svg",
@@ -124,6 +113,19 @@ var (
 		"qt":            "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/qt/qt-original.svg",
 		"arduino":       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/arduino/arduino-original.svg",
 		"xamarin":       "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/xamarin/xamarin-original.svg",
+
+		// Official Modern AI & Mobile IDE Vector SVGs via SimpleIcons Official CDN
+		"cursor":    "https://cdn.simpleicons.org/cursor/000000",
+		"claude":    "https://cdn.simpleicons.org/anthropic/D97757",
+		"anthropic": "https://cdn.simpleicons.org/anthropic/D97757",
+		"replit":    "https://cdn.simpleicons.org/replit/F26207",
+		"zed":       "https://cdn.simpleicons.org/zed/FF5722",
+		"vscodium":  "https://cdn.simpleicons.org/vscodium/2F80ED",
+		"codium":    "https://cdn.simpleicons.org/vscodium/2F80ED",
+		"fleet":     "https://cdn.simpleicons.org/fleet/6366F1",
+		"warp":      "https://cdn.simpleicons.org/warp/0066FF",
+		"windsurf":  "https://cdn.simpleicons.org/codeium/09B6A2",
+		"codeium":   "https://cdn.simpleicons.org/codeium/09B6A2",
 	}
 
 	iconAliases = map[string]string{
@@ -262,16 +264,6 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		return
 	}
 
-	// Cross-check IDE registry first if requested via /file/
-	if _, isCustom := customIDEIcons[iconName]; isCustom {
-		handleIDEIcon(w, r, iconName)
-		return
-	}
-	if _, isRegistry := ideRegistry[iconName]; isRegistry {
-		handleIDEIcon(w, r, iconName)
-		return
-	}
-
 	targetIcon := iconName
 	if mapped, exists := iconAliases[iconName]; exists {
 		targetIcon = mapped
@@ -287,8 +279,7 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		fallbackURL := fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", iconName)
 		resp, err = client.Get(fallbackURL)
 		if err != nil || resp.StatusCode != http.StatusOK {
-			// If file icon not found, attempt IDE fallback
-			handleIDEIcon(w, r, iconName)
+			http.Error(w, "icon not found", http.StatusNotFound)
 			return
 		}
 	}
