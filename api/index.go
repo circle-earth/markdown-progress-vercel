@@ -48,18 +48,6 @@ const (
       font-size: 11px;
       fill: {{.TextColor}};
     }
-    {{if and .Detached (not .HasCustomTextColor)}}
-    @media (prefers-color-scheme: dark) {
-      .progress-text {
-        fill: #e6edf3;
-      }
-    }
-    @media (prefers-color-scheme: light) {
-      .progress-text {
-        fill: #24292f;
-      }
-    }
-    {{end}}
   </style>
   <linearGradient id="a" x2="0" y2="100%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".2"/>
@@ -386,40 +374,24 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		barColor = customBg
 	}
 
-	_, hasD := r.URL.Query()["d"]
-	totalWidth := totalBarWidth // 90.0px (EXACT SAME AS DEFAULT /75 PROGRESS BAR!)
-	textX := 54.0
-	textAnchor := "middle"
 	textColor := "#fff"
-	iconX := 4 // 18px icon at x=4 on left side
-
-	if hasD {
-		totalWidth = 145.0 // 145.0px (EXACT SAME AS DETACHED /75?d PROGRESS BAR!)
-		textX = 96.0
-		textAnchor = "start"
-		textColor = "#24292f"
-		iconX = 4 // 18px icon at x=4 on left side
-	}
-
-	hasCustomTextColor := false
 	if customTextColor, ok := parseOptionalColor(r.URL.Query().Get("textColor")); ok && customTextColor != "" {
 		textColor = customTextColor
-		hasCustomTextColor = true
 	}
 
-	// Pass exact Data struct to progressTemplate (100% unified with progress bar template)
+	// Text INSIDE progress bar (TotalWidth = 90.0px, TextX = 54.0)
 	data := Data{
 		BackgroundColor:    grey,
 		Label:              displayName,
 		Progress:           90, // 100% full colored bar (90px)
 		PickedColor:        barColor,
-		Detached:           hasD,
-		HasCustomTextColor: hasCustomTextColor,
-		TotalWidth:         totalWidth,
-		TextX:              textX,
-		TextAnchor:         textAnchor,
+		Detached:           false,
+		HasCustomTextColor: false,
+		TotalWidth:         90.0,
+		TextX:              54.0,
+		TextAnchor:         "middle",
 		TextColor:          textColor,
-		IconSVG:            formatIconSVG(rawSVG, iconX),
+		IconSVG:            formatIconSVG(rawSVG, 4),
 		HasIcon:            true,
 	}
 
@@ -511,40 +483,24 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		barColor = customBg
 	}
 
-	_, hasD := r.URL.Query()["d"]
-	totalWidth := totalBarWidth // 90.0px (EXACT SAME AS DEFAULT /75 PROGRESS BAR!)
-	textX := 54.0
-	textAnchor := "middle"
 	textColor := "#fff"
-	iconX := 4 // 18px icon at x=4 on left side
-
-	if hasD {
-		totalWidth = 145.0 // 145.0px (EXACT SAME AS DETACHED /75?d PROGRESS BAR!)
-		textX = 96.0
-		textAnchor = "start"
-		textColor = "#24292f"
-		iconX = 4 // 18px icon at x=4 on left side
-	}
-
-	hasCustomTextColor := false
 	if customTextColor, ok := parseOptionalColor(r.URL.Query().Get("textColor")); ok && customTextColor != "" {
 		textColor = customTextColor
-		hasCustomTextColor = true
 	}
 
-	// Pass exact Data struct to progressTemplate (100% unified with progress bar template)
+	// Text INSIDE progress bar (TotalWidth = 90.0px, TextX = 54.0)
 	data := Data{
 		BackgroundColor:    grey,
 		Label:              displayName,
 		Progress:           90, // 100% full colored bar (90px)
 		PickedColor:        barColor,
-		Detached:           hasD,
-		HasCustomTextColor: hasCustomTextColor,
-		TotalWidth:         totalWidth,
-		TextX:              textX,
-		TextAnchor:         textAnchor,
+		Detached:           false,
+		HasCustomTextColor: false,
+		TotalWidth:         90.0,
+		TextX:              54.0,
+		TextAnchor:         "middle",
 		TextColor:          textColor,
-		IconSVG:            formatIconSVG(rawSVG, iconX),
+		IconSVG:            formatIconSVG(rawSVG, 4),
 		HasIcon:            true,
 	}
 
@@ -739,19 +695,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		label = customLabel
 	}
 
-	// Detached mode layout logic (?d)
-	_, hasD := r.URL.Query()["d"]
-	totalWidth := totalBarWidth
+	totalWidth := totalBarWidth // 90.0px
 	textX := 45.0
 	textAnchor := "middle"
 	textColor := "#fff"
-
-	if hasD {
-		totalWidth = 145.0
-		textX = 96.0
-		textAnchor = "start"
-		textColor = "#24292f"
-	}
 
 	hasCustomTextColor := false
 	customTextColor, ok := parseOptionalColor(r.URL.Query().Get("textColor"))
@@ -765,7 +712,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		Label:              label,
 		Progress:           percentageToWidth(percentage),
 		PickedColor:        pickedColor,
-		Detached:           hasD,
+		Detached:           false,
 		HasCustomTextColor: hasCustomTextColor,
 		TotalWidth:         totalWidth,
 		TextX:              textX,
