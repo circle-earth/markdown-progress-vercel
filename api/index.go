@@ -99,6 +99,28 @@ var (
 		"acode":       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#1E88E5"/><path fill="#FFA000" d="M7 6l-5 6 5 6 1.4-1.4L4.8 12l3.6-4.6L7 6zm10 0l-1.4 1.4 3.6 4.6-3.6 4.6L17 18l5-6-5-6zM13.4 4l-4.8 16h2.1l4.8-16h-2.1z"/></svg>`,
 	}
 
+	// Extra IDE & Tool mappings from circle-earth/icon repo (SVGL & Iconify)
+	extraIdeRegistry = map[string]string{
+		"zed":        "https://svgl.app/library/zed-logo.svg",
+		"word":       "https://svgl.app/library/microsoft-word.svg",
+		"excel":      "https://svgl.app/library/microsoft-excel.svg",
+		"powerpoint": "https://svgl.app/library/microsoft-powerpoint.svg",
+		"edge":       "https://svgl.app/library/edge.svg",
+		"appcode":    "https://api.iconify.design/logos/appcode.svg",
+		"brackets":   "https://api.iconify.design/logos/brackets.svg",
+		"cloud9":     "https://api.iconify.design/logos/cloud9.svg",
+		"mps":        "https://api.iconify.design/logos/mps.svg",
+		"textmate":   "https://api.iconify.design/file-icons/textmate.svg",
+		"micro":      "https://api.iconify.design/logos/micro.svg",
+		"nova":       "https://api.iconify.design/arcticons/nova.svg",
+		"terminal":   "https://api.iconify.design/material-symbols/terminal.svg",
+		"lighttable": "https://api.iconify.design/lets-icons/table-light.svg",
+		"espresso":   "https://api.iconify.design/arcticons/espresso-house.svg",
+		"wpsoffice":  "https://api.iconify.design/arcticons/wpsoffice.svg",
+		"maestro":    "https://api.iconify.design/logos/maestro.svg",
+		"wing":       "https://api.iconify.design/logos/winglang.svg",
+	}
+
 	// Direct official 1-to-1 multi-color brand SVGs for IDEs
 	ideRegistry = map[string]string{
 		"vscode":        "https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/file_type_vscode.svg",
@@ -202,6 +224,7 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 
 	ideName = strings.ToLower(strings.TrimSpace(ideName))
 	ideName = strings.TrimSuffix(ideName, ".svg")
+	cleanName := regexp.MustCompile(`[^a-z0-9]`).ReplaceAllString(ideName, "")
 
 	if ideName == "" {
 		http.Error(w, "IDE name required", http.StatusBadRequest)
@@ -215,16 +238,22 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 	} else {
 		cdnURL, exists := ideRegistry[ideName]
 		if !exists {
-			cdnURL = fmt.Sprintf("https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/%s/%s-original.svg", ideName, ideName)
+			if extraURL, hasExtra := extraIdeRegistry[cleanName]; hasExtra {
+				cdnURL = extraURL
+			} else {
+				cdnURL = fmt.Sprintf("https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/%s/%s-original.svg", ideName, ideName)
+			}
 		}
 
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Get(cdnURL)
 		if err != nil || resp.StatusCode != http.StatusOK {
-			// Iconify API Fallback Engine (Same as circle-earth/icon)
+			// Iconify API Fallback Engine (Same as circle-earth/icon repo)
 			iconifyURLs := []string{
 				fmt.Sprintf("https://api.iconify.design/logos/%s.svg", ideName),
+				fmt.Sprintf("https://api.iconify.design/logos/%s.svg", cleanName),
 				fmt.Sprintf("https://api.iconify.design/devicon/%s.svg", ideName),
+				fmt.Sprintf("https://api.iconify.design/file-icons/%s.svg", ideName),
 				fmt.Sprintf("https://api.iconify.design/vscode-icons/%s.svg", ideName),
 				fmt.Sprintf("https://api.iconify.design/simple-icons/%s.svg", ideName),
 			}
