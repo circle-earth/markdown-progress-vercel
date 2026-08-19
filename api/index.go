@@ -83,6 +83,7 @@ var (
 	svgHeightRegex = regexp.MustCompile(`(?i)\bheight="[^"]*"`)
 
 	iconAliases = map[string]string{
+		// Languages & Tech Stack
 		"node":       "file_type_node",
 		"nodejs":     "file_type_node",
 		"js":         "file_type_node",
@@ -121,6 +122,31 @@ var (
 		"yml":        "file_type_yaml",
 		"md":         "file_type_markdown",
 		"markdown":   "file_type_markdown",
+
+		// IDEs & Code Editors
+		"vscode":        "file_type_vscode",
+		"vs":            "file_type_visualstudio",
+		"visualstudio":  "file_type_visualstudio",
+		"idea":          "file_type_idea",
+		"intellij":      "file_type_idea",
+		"pycharm":       "file_type_pycharm",
+		"webstorm":      "file_type_webstorm",
+		"phpstorm":      "file_type_phpstorm",
+		"clion":         "file_type_clion",
+		"rider":         "file_type_rider",
+		"rubymine":      "file_type_rubymine",
+		"goland":        "file_type_goland",
+		"datagrip":      "file_type_datagrip",
+		"androidstudio": "file_type_android-studio",
+		"android-studio": "file_type_android-studio",
+		"xcode":         "file_type_xcode",
+		"eclipse":       "file_type_eclipse",
+		"vim":           "file_type_vim",
+		"neovim":        "file_type_neovim",
+		"sublime":       "file_type_sublime",
+		"sublimetext":   "file_type_sublime",
+		"atom":          "file_type_atom",
+		"emacs":         "file_type_emacs",
 	}
 )
 
@@ -159,17 +185,31 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		targetIcon = "file_type_" + iconName
 	}
 
-	cdnURL := fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", targetIcon)
-
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(cdnURL)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		fallbackURL := fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", iconName)
-		resp, err = client.Get(fallbackURL)
-		if err != nil || resp.StatusCode != http.StatusOK {
-			http.Error(w, "icon not found", http.StatusNotFound)
-			return
+
+	urlsToTry := []string{
+		fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", targetIcon),
+		fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", iconName),
+		fmt.Sprintf("https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/%s.svg", iconName),
+		fmt.Sprintf("https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/%s.svg", strings.ReplaceAll(iconName, "-", "")),
+	}
+
+	var resp *http.Response
+	var err error
+
+	for _, u := range urlsToTry {
+		resp, err = client.Get(u)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			break
 		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+	}
+
+	if resp == nil || resp.StatusCode != http.StatusOK {
+		http.Error(w, "icon not found", http.StatusNotFound)
+		return
 	}
 	defer resp.Body.Close()
 
