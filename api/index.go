@@ -169,16 +169,28 @@ var (
 )
 
 func setSVGSize(svg string, size int) string {
-	sizeAttr := fmt.Sprintf(`width="%d" height="%d"`, size, size)
 	if svgWidthRegex.MatchString(svg) {
 		svg = svgWidthRegex.ReplaceAllString(svg, fmt.Sprintf(`width="%d"`, size))
+	} else {
+		svg = strings.Replace(svg, "<svg", fmt.Sprintf(`<svg width="%d"`, size), 1)
 	}
+
 	if svgHeightRegex.MatchString(svg) {
 		svg = svgHeightRegex.ReplaceAllString(svg, fmt.Sprintf(`height="%d"`, size))
-	} else if !svgWidthRegex.MatchString(svg) {
-		svg = strings.Replace(svg, "<svg", fmt.Sprintf("<svg %s", sizeAttr), 1)
+	} else {
+		svg = strings.Replace(svg, "<svg", fmt.Sprintf(`<svg height="%d"`, size), 1)
 	}
 	return svg
+}
+
+func getRequestedSize(r *http.Request) int {
+	sizeStr := r.URL.Query().Get("size")
+	if sizeStr != "" {
+		if sizeVal, err := strconv.Atoi(sizeStr); err == nil && sizeVal > 0 && sizeVal <= 512 {
+			return sizeVal
+		}
+	}
+	return 24 // Default size if omitted so markdown images render properly
 }
 
 func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
@@ -198,11 +210,9 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 
 	var svgContent string
 
-	// 1. Check embedded custom icons (VS Code 3D Ribbon, Cursor, Claude, Antigravity, Acode, Windsurf, Zed, Replit, VSCodium, Fleet, Warp, etc.)
 	if embeddedSVG, exists := customIDEIcons[ideName]; exists {
 		svgContent = embeddedSVG
 	} else {
-		// 2. Fetch from direct official CDN registry
 		cdnURL, exists := ideRegistry[ideName]
 		if !exists {
 			cdnURL = fmt.Sprintf("https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/%s/%s-original.svg", ideName, ideName)
@@ -224,12 +234,8 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		svgContent = string(bodyBytes)
 	}
 
-	sizeStr := r.URL.Query().Get("size")
-	if sizeStr != "" {
-		if sizeVal, err := strconv.Atoi(sizeStr); err == nil && sizeVal > 0 && sizeVal <= 512 {
-			svgContent = setSVGSize(svgContent, sizeVal)
-		}
-	}
+	sizeVal := getRequestedSize(r)
+	svgContent = setSVGSize(svgContent, sizeVal)
 
 	w.Header().Set("Content-Type", "image/svg+xml")
 	w.Header().Set("Cache-Control", "public, max-age=86400, s-maxage=86400")
@@ -256,6 +262,16 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		return
 	}
 
+	// Cross-check IDE registry first if requested via /file/
+	if _, isCustom := customIDEIcons[iconName]; isCustom {
+		handleIDEIcon(w, r, iconName)
+		return
+	}
+	if _, isRegistry := ideRegistry[iconName]; isRegistry {
+		handleIDEIcon(w, r, iconName)
+		return
+	}
+
 	targetIcon := iconName
 	if mapped, exists := iconAliases[iconName]; exists {
 		targetIcon = mapped
@@ -271,7 +287,8 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		fallbackURL := fmt.Sprintf("https://cdn.jsdelivr.net/gh/vscode-icons/vscode-icons@master/icons/%s.svg", iconName)
 		resp, err = client.Get(fallbackURL)
 		if err != nil || resp.StatusCode != http.StatusOK {
-			http.Error(w, "icon not found", http.StatusNotFound)
+			// If file icon not found, attempt IDE fallback
+			handleIDEIcon(w, r, iconName)
 			return
 		}
 	}
@@ -285,12 +302,8 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 
 	svgContent := string(bodyBytes)
 
-	sizeStr := r.URL.Query().Get("size")
-	if sizeStr != "" {
-		if sizeVal, err := strconv.Atoi(sizeStr); err == nil && sizeVal > 0 && sizeVal <= 512 {
-			svgContent = setSVGSize(svgContent, sizeVal)
-		}
-	}
+	sizeVal := getRequestedSize(r)
+	svgContent = setSVGSize(svgContent, sizeVal)
 
 	w.Header().Set("Content-Type", "image/svg+xml")
 	w.Header().Set("Cache-Control", cacheControlValue)
@@ -524,5 +537,5 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _ = w.Write([]byte(buf.Bytes()))
+	_, _ = w.Write(buf.Bytes())
 }

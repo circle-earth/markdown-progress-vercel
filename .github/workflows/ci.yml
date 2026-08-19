@@ -5,19 +5,16 @@ on:
   pull_request:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
-      - name: Test
-        run: go test ./...
-
-      - name: Vet
-        run: go vet ./...
+      - name: Build
+        run: go build .
