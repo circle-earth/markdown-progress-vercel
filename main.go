@@ -291,7 +291,7 @@ func getDisplayName(raw string) string {
 	return strings.Join(parts, " ")
 }
 
-func formatIconSVG(rawSVG string) string {
+func formatIconSVG(rawSVG string, iconX int) string {
 	viewBoxAttr := `viewBox="0 0 24 24"`
 	if match := viewBoxRegex.FindString(rawSVG); match != "" {
 		viewBoxAttr = match
@@ -302,8 +302,7 @@ func formatIconSVG(rawSVG string) string {
 	if svgTagStart != -1 && svgTagEnd != -1 && svgTagEnd > svgTagStart {
 		innerContent = rawSVG[svgTagStart+1 : svgTagEnd]
 	}
-	// Center 16x16 icon inside left bar at x=37, y=2
-	return fmt.Sprintf(`<svg x="37" y="2" width="16" height="16" %s preserveAspectRatio="xMidYMid meet">%s</svg>`, viewBoxAttr, innerContent)
+	return fmt.Sprintf(`<svg x="%d" y="2" width="16" height="16" %s preserveAspectRatio="xMidYMid meet">%s</svg>`, iconX, viewBoxAttr, innerContent)
 }
 
 func setSVGSize(svg string, size int) string {
@@ -388,7 +387,21 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		barColor = customBg
 	}
 
-	textColor := "#24292f"
+	_, hasD := r.URL.Query()["d"]
+	totalWidth := totalBarWidth // 90.0px (EXACT SAME AS DEFAULT /75 PROGRESS BAR!)
+	textX := 54.0
+	textAnchor := "middle"
+	textColor := "#fff"
+	iconX := 6
+
+	if hasD {
+		totalWidth = 145.0 // 145.0px (EXACT SAME AS DETACHED /75?d PROGRESS BAR!)
+		textX = 96.0
+		textAnchor = "start"
+		textColor = "#24292f"
+		iconX = 37
+	}
+
 	hasCustomTextColor := false
 	if customTextColor, ok := parseOptionalColor(r.URL.Query().Get("textColor")); ok && customTextColor != "" {
 		textColor = customTextColor
@@ -401,13 +414,13 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		Label:              displayName,
 		Progress:           90, // 100% full colored bar (90px)
 		PickedColor:        barColor,
-		Detached:           true,
+		Detached:           hasD,
 		HasCustomTextColor: hasCustomTextColor,
-		TotalWidth:         145.0,
-		TextX:              96.0,
-		TextAnchor:         "start",
+		TotalWidth:         totalWidth,
+		TextX:              textX,
+		TextAnchor:         textAnchor,
 		TextColor:          textColor,
-		IconSVG:            formatIconSVG(rawSVG),
+		IconSVG:            formatIconSVG(rawSVG, iconX),
 		HasIcon:            true,
 	}
 
@@ -499,7 +512,21 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		barColor = customBg
 	}
 
-	textColor := "#24292f"
+	_, hasD := r.URL.Query()["d"]
+	totalWidth := totalBarWidth // 90.0px (EXACT SAME AS DEFAULT /75 PROGRESS BAR!)
+	textX := 54.0
+	textAnchor := "middle"
+	textColor := "#fff"
+	iconX := 6
+
+	if hasD {
+		totalWidth = 145.0 // 145.0px (EXACT SAME AS DETACHED /75?d PROGRESS BAR!)
+		textX = 96.0
+		textAnchor = "start"
+		textColor = "#24292f"
+		iconX = 37
+	}
+
 	hasCustomTextColor := false
 	if customTextColor, ok := parseOptionalColor(r.URL.Query().Get("textColor")); ok && customTextColor != "" {
 		textColor = customTextColor
@@ -512,13 +539,13 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		Label:              displayName,
 		Progress:           90, // 100% full colored bar (90px)
 		PickedColor:        barColor,
-		Detached:           true,
+		Detached:           hasD,
 		HasCustomTextColor: hasCustomTextColor,
-		TotalWidth:         145.0,
-		TextX:              96.0,
-		TextAnchor:         "start",
+		TotalWidth:         totalWidth,
+		TextX:              textX,
+		TextAnchor:         textAnchor,
 		TextColor:          textColor,
-		IconSVG:            formatIconSVG(rawSVG),
+		IconSVG:            formatIconSVG(rawSVG, iconX),
 		HasIcon:            true,
 	}
 
