@@ -32,6 +32,8 @@ type Data struct {
 	TextX              float64
 	TextAnchor         string
 	TextColor          string
+	IconSVG            string
+	HasIcon            bool
 }
 
 const (
@@ -68,6 +70,9 @@ const (
   <rect rx="4" x="0" width="90.0" height="20" fill="{{.BackgroundColor}}"/>
   <rect rx="4" x="0" width="{{.Progress}}" height="20" fill="{{.PickedColor}}"/>
   <rect rx="4" width="90.0" height="20" fill="url(#a)"/>
+  {{if .HasIcon}}
+  {{.IconSVG}}
+  {{end}}
   <g text-anchor="{{.TextAnchor}}">
     <text class="progress-text" x="{{.TextX}}" y="14">
       {{.Label}}
@@ -286,94 +291,19 @@ func getDisplayName(raw string) string {
 	return strings.Join(parts, " ")
 }
 
-func createProgressStyleBadge(innerSVG string, keyName string, displayName string, customBg string, customTextColor string, isDetached bool) string {
-	// Left box background color: #333 by default for 100% icon contrast, or brand color if specified/custom
-	leftBg := "#333"
-	if customBg != "" {
-		leftBg = customBg
-	}
-
-	cleanInner := innerSVG
+func formatIconSVG(rawSVG string) string {
 	viewBoxAttr := `viewBox="0 0 24 24"`
-	if match := viewBoxRegex.FindString(cleanInner); match != "" {
+	if match := viewBoxRegex.FindString(rawSVG); match != "" {
 		viewBoxAttr = match
 	}
-
-	svgTagStart := strings.Index(cleanInner, ">")
-	svgTagEnd := strings.LastIndex(cleanInner, "</svg>")
-	innerContent := cleanInner
+	svgTagStart := strings.Index(rawSVG, ">")
+	svgTagEnd := strings.LastIndex(rawSVG, "</svg>")
+	innerContent := rawSVG
 	if svgTagStart != -1 && svgTagEnd != -1 && svgTagEnd > svgTagStart {
-		innerContent = cleanInner[svgTagStart+1 : svgTagEnd]
+		innerContent = rawSVG[svgTagStart+1 : svgTagEnd]
 	}
-
-	embeddedIcon := fmt.Sprintf(`<svg x="6" y="2" width="16" height="16" %s preserveAspectRatio="xMidYMid meet">%s</svg>`, viewBoxAttr, innerContent)
-
-	leftWidth := 28.0
-	approxCharWidth := 6.8
-	textWidth := float64(utf8.RuneCountInString(displayName)) * approxCharWidth
-	if textWidth < 30.0 {
-		textWidth = 30.0
-	}
-
-	if isDetached {
-		totalWidth := int(leftWidth + 6.0 + textWidth + 8.0)
-		textColorStyle := `fill: #24292f;`
-		if customTextColor != "" {
-			textColorStyle = fmt.Sprintf("fill: %s;", customTextColor)
-		}
-
-		mediaQuery := ""
-		if customTextColor == "" {
-			mediaQuery = `@media (prefers-color-scheme: dark) { .badge-text { fill: #e6edf3; } } @media (prefers-color-scheme: light) { .badge-text { fill: #24292f; } }`
-		}
-
-		return fmt.Sprintf(`<svg width="%d" height="20" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    .badge-text { font-family: DejaVu Sans,Verdana,Geneva,sans-serif; font-size: 11px; %s }
-    %s
-  </style>
-  <linearGradient id="badge_gloss" x2="0" y2="100%%">
-    <stop offset="0" stop-color="#bbb" stop-opacity=".2"/>
-    <stop offset="1" stop-opacity=".1"/>
-  </linearGradient>
-  <rect rx="4" x="0" width="28" height="20" fill="%s"/>
-  <rect rx="4" width="28" height="20" fill="url(#badge_gloss)"/>
-  %s
-  <g text-anchor="start">
-    <text class="badge-text" x="34" y="14">%s</text>
-  </g>
-</svg>`, totalWidth, textColorStyle, mediaQuery, leftBg, embeddedIcon, displayName)
-	}
-
-	// Full Unified Badge Mode (Default)
-	rightWidth := textWidth + 14.0
-	totalWidth := int(leftWidth + rightWidth)
-	textX := leftWidth + (rightWidth / 2.0)
-
-	rightBg := "#555"
-	textColor := "#fff"
-	if customTextColor != "" {
-		textColor = customTextColor
-	}
-
-	return fmt.Sprintf(`<svg width="%d" height="20" xmlns="http://www.w3.org/2000/svg">
-  <linearGradient id="badge_gloss" x2="0" y2="100%%">
-    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-    <stop offset="1" stop-opacity=".1"/>
-  </linearGradient>
-  <clipPath id="badge_clip">
-    <rect width="%d" height="20" rx="4"/>
-  </clipPath>
-  <g clip-path="url(#badge_clip)">
-    <rect width="28" height="20" fill="%s"/>
-    <rect x="28" width="%d" height="20" fill="%s"/>
-    <rect width="%d" height="20" fill="url(#badge_gloss)"/>
-  </g>
-  %s
-  <g text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11" fill="%s">
-    <text x="%.1f" y="14">%s</text>
-  </g>
-</svg>`, totalWidth, totalWidth, leftBg, int(rightWidth)+1, rightBg, totalWidth, embeddedIcon, textColor, textX, displayName)
+	// Center 16x16 icon in the 90.0px colored bar: (90 - 16)/2 = 37
+	return fmt.Sprintf(`<svg x="37" y="2" width="16" height="16" %s preserveAspectRatio="xMidYMid meet">%s</svg>`, viewBoxAttr, innerContent)
 }
 
 func setSVGSize(svg string, size int) string {
@@ -431,23 +361,61 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 
 	rawSVG := string(svgBytes)
 	_, isRaw := r.URL.Query()["raw"]
-	_, isDetached := r.URL.Query()["d"]
-	bgQuery := r.URL.Query().Get("bg")
-	if bgQuery == "" {
-		bgQuery = r.URL.Query().Get("color")
-	}
-	textColorQuery := r.URL.Query().Get("textColor")
-
-	var finalSVG string
 	if isRaw {
 		sizeVal := getRequestedSize(r)
-		finalSVG = setSVGSize(rawSVG, sizeVal)
-	} else {
-		displayName := getDisplayName(ideName)
-		if customLabel := r.URL.Query().Get("label"); customLabel != "" {
-			displayName = customLabel
+		finalSVG := setSVGSize(rawSVG, sizeVal)
+		w.Header().Set("Content-Type", "image/svg+xml")
+		w.Header().Set("Cache-Control", cacheControlValue)
+		if r.Method == http.MethodHead {
+			return
 		}
-		finalSVG = createProgressStyleBadge(rawSVG, ideName, displayName, bgQuery, textColorQuery, isDetached)
+		_, _ = w.Write([]byte(finalSVG))
+		return
+	}
+
+	displayName := getDisplayName(ideName)
+	if customLabel := r.URL.Query().Get("label"); customLabel != "" {
+		displayName = customLabel
+	}
+
+	barColor := "#333"
+	if bc, ok := brandColorMap[cleanName]; ok {
+		barColor = bc
+	}
+	if customBg := r.URL.Query().Get("bg"); customBg != "" {
+		barColor = customBg
+	} else if customBg := r.URL.Query().Get("color"); customBg != "" {
+		barColor = customBg
+	}
+
+	textColor := "#24292f"
+	hasCustomTextColor := false
+	if customTextColor, ok := parseOptionalColor(r.URL.Query().Get("textColor")); ok && customTextColor != "" {
+		textColor = customTextColor
+		hasCustomTextColor = true
+	}
+
+	// Pass exact Data struct to progressTemplate (100% unified with progress bar template)
+	data := Data{
+		BackgroundColor:    grey,
+		Label:              displayName,
+		Progress:           90, // 100% full colored bar (90px)
+		PickedColor:        barColor,
+		Detached:           true,
+		HasCustomTextColor: hasCustomTextColor,
+		TotalWidth:         145.0,
+		TextX:              96.0,
+		TextAnchor:         "start",
+		TextColor:          textColor,
+		IconSVG:            formatIconSVG(rawSVG),
+		HasIcon:            true,
+	}
+
+	buf := new(bytes.Buffer)
+	err = progressTemplate.Execute(buf, data)
+	if err != nil {
+		http.Error(w, "failed to render SVG", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
@@ -457,7 +425,7 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		return
 	}
 
-	_, _ = w.Write([]byte(finalSVG))
+	_, _ = w.Write(buf.Bytes())
 }
 
 func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
@@ -504,23 +472,61 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 
 	rawSVG := string(bodyBytes)
 	_, isRaw := r.URL.Query()["raw"]
-	_, isDetached := r.URL.Query()["d"]
-	bgQuery := r.URL.Query().Get("bg")
-	if bgQuery == "" {
-		bgQuery = r.URL.Query().Get("color")
-	}
-	textColorQuery := r.URL.Query().Get("textColor")
-
-	var finalSVG string
 	if isRaw {
 		sizeVal := getRequestedSize(r)
-		finalSVG = setSVGSize(rawSVG, sizeVal)
-	} else {
-		displayName := getDisplayName(iconName)
-		if customLabel := r.URL.Query().Get("label"); customLabel != "" {
-			displayName = customLabel
+		finalSVG := setSVGSize(rawSVG, sizeVal)
+		w.Header().Set("Content-Type", "image/svg+xml")
+		w.Header().Set("Cache-Control", cacheControlValue)
+		if r.Method == http.MethodHead {
+			return
 		}
-		finalSVG = createProgressStyleBadge(rawSVG, iconName, displayName, bgQuery, textColorQuery, isDetached)
+		_, _ = w.Write([]byte(finalSVG))
+		return
+	}
+
+	displayName := getDisplayName(iconName)
+	if customLabel := r.URL.Query().Get("label"); customLabel != "" {
+		displayName = customLabel
+	}
+
+	barColor := "#333"
+	if bc, ok := brandColorMap[iconName]; ok {
+		barColor = bc
+	}
+	if customBg := r.URL.Query().Get("bg"); customBg != "" {
+		barColor = customBg
+	} else if customBg := r.URL.Query().Get("color"); customBg != "" {
+		barColor = customBg
+	}
+
+	textColor := "#24292f"
+	hasCustomTextColor := false
+	if customTextColor, ok := parseOptionalColor(r.URL.Query().Get("textColor")); ok && customTextColor != "" {
+		textColor = customTextColor
+		hasCustomTextColor = true
+	}
+
+	// Pass exact Data struct to progressTemplate (100% unified with progress bar template)
+	data := Data{
+		BackgroundColor:    grey,
+		Label:              displayName,
+		Progress:           90, // 100% full colored bar (90px)
+		PickedColor:        barColor,
+		Detached:           true,
+		HasCustomTextColor: hasCustomTextColor,
+		TotalWidth:         145.0,
+		TextX:              96.0,
+		TextAnchor:         "start",
+		TextColor:          textColor,
+		IconSVG:            formatIconSVG(rawSVG),
+		HasIcon:            true,
+	}
+
+	buf := new(bytes.Buffer)
+	err = progressTemplate.Execute(buf, data)
+	if err != nil {
+		http.Error(w, "failed to render SVG", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
@@ -530,7 +536,7 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		return
 	}
 
-	_, _ = w.Write([]byte(finalSVG))
+	_, _ = w.Write(buf.Bytes())
 }
 
 func clampPercentage(percentage float64) float64 {
