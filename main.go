@@ -285,15 +285,15 @@ func getDisplayName(raw string) string {
 	return strings.Join(parts, " ")
 }
 
-func createProgressStyleBadge(innerSVG string, keyName string, displayName string, customBg string, customTextColor string) string {
-	boxColor := "#555"
+func createProgressStyleBadge(innerSVG string, keyName string, displayName string, customBg string, customTextColor string, isDetached bool) string {
+	brandColor := "#555"
 	if clean := strings.ToLower(strings.TrimSpace(keyName)); clean != "" {
 		if bc, exists := brandColorMap[clean]; exists {
-			boxColor = bc
+			brandColor = bc
 		}
 	}
 	if customBg != "" {
-		boxColor = customBg
+		brandColor = customBg
 	}
 
 	cleanInner := innerSVG
@@ -308,57 +308,77 @@ func createProgressStyleBadge(innerSVG string, keyName string, displayName strin
 		cleanInner = strings.Replace(cleanInner, "<svg", `<svg preserveAspectRatio="xMidYMid meet"`, 1)
 	}
 
-	boxWidth := 28
-	textXPos := boxWidth + 6
+	leftWidth := 28.0
 	approxCharWidth := 6.8
 	textWidth := float64(utf8.RuneCountInString(displayName)) * approxCharWidth
-	totalWidth := int(float64(textXPos) + textWidth + 8.0)
-
-	textColorStyle := `fill: #24292f;`
-	if customTextColor != "" {
-		textColorStyle = fmt.Sprintf("fill: %s;", customTextColor)
+	if textWidth < 30.0 {
+		textWidth = 30.0
 	}
 
-	badgeSVG := fmt.Sprintf(`<svg width="%d" height="20" xmlns="http://www.w3.org/2000/svg">
+	if isDetached {
+		// Detached mode (?d)
+		totalWidth := int(leftWidth + 6.0 + textWidth + 8.0)
+		textColorStyle := `fill: #24292f;`
+		if customTextColor != "" {
+			textColorStyle = fmt.Sprintf("fill: %s;", customTextColor)
+		}
+
+		mediaQuery := ""
+		if customTextColor == "" {
+			mediaQuery = `@media (prefers-color-scheme: dark) { .badge-text { fill: #e6edf3; } } @media (prefers-color-scheme: light) { .badge-text { fill: #24292f; } }`
+		}
+
+		return fmt.Sprintf(`<svg width="%d" height="20" xmlns="http://www.w3.org/2000/svg">
   <style>
-    .badge-text {
-      font-family: DejaVu Sans,Verdana,Geneva,sans-serif;
-      font-size: 11px;
-      %s
-    }
+    .badge-text { font-family: DejaVu Sans,Verdana,Geneva,sans-serif; font-size: 11px; %s }
     %s
   </style>
   <linearGradient id="a" x2="0" y2="100%%">
     <stop offset="0" stop-color="#bbb" stop-opacity=".2"/>
     <stop offset="1" stop-opacity=".1"/>
   </linearGradient>
-  <rect rx="4" x="0" width="%d" height="20" fill="%s"/>
-  <rect rx="4" width="%d" height="20" fill="url(#a)"/>
+  <rect rx="4" x="0" width="28" height="20" fill="%s"/>
+  <rect rx="4" width="28" height="20" fill="url(#a)"/>
   <g transform="translate(6, 2)">
     %s
   </g>
   <g text-anchor="start">
-    <text class="badge-text" x="%d" y="14">
-      %s
-    </text>
+    <text class="badge-text" x="34" y="14">%s</text>
   </g>
-</svg>`, totalWidth, textColorStyle, func() string {
-		if customTextColor != "" {
-			return ""
-		}
-		return `@media (prefers-color-scheme: dark) {
-      .badge-text {
-        fill: #e6edf3;
-      }
-    }
-    @media (prefers-color-scheme: light) {
-      .badge-text {
-        fill: #24292f;
-      }
-    }`
-	}(), boxWidth, boxColor, boxWidth, cleanInner, textXPos, displayName)
+</svg>`, totalWidth, textColorStyle, mediaQuery, brandColor, cleanInner, displayName)
+	}
 
-	return badgeSVG
+	// Full Unified Progress/Shields Badge Mode (Default)
+	rightWidth := textWidth + 14.0
+	totalWidth := int(leftWidth + rightWidth)
+	textX := leftWidth + (rightWidth / 2.0)
+
+	rightBg := "#555"
+	textColor := "#fff"
+	if customTextColor != "" {
+		textColor = customTextColor
+	}
+
+	return fmt.Sprintf(`<svg width="%d" height="20" xmlns="http://www.w3.org/2000/svg">
+  <linearGradient id="a" x2="0" y2="100%%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r">
+    <rect width="%d" height="20" rx="4"/>
+  </clipPath>
+  <g clip-path="url(#r)">
+    <rect width="28" height="20" fill="%s"/>
+    <rect x="28" width="%d" height="20" fill="%s"/>
+    <rect width="%d" height="20" fill="url(#a)"/>
+  </g>
+  <g transform="translate(6, 2)">
+    %s
+  </g>
+  <g text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11" fill="%s">
+    <text x="%.1f" y="14">%s</text>
+  </g>
+</svg>`, totalWidth, totalWidth, brandColor, int(rightWidth)+1, rightBg, totalWidth, cleanInner, textColor, textX, displayName)
 }
 
 func setSVGSize(svg string, size int) string {
@@ -416,6 +436,7 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 
 	rawSVG := string(svgBytes)
 	_, isRaw := r.URL.Query()["raw"]
+	_, isDetached := r.URL.Query()["d"]
 	bgQuery := r.URL.Query().Get("bg")
 	if bgQuery == "" {
 		bgQuery = r.URL.Query().Get("color")
@@ -431,11 +452,11 @@ func handleIDEIcon(w http.ResponseWriter, r *http.Request, ideName string) {
 		if customLabel := r.URL.Query().Get("label"); customLabel != "" {
 			displayName = customLabel
 		}
-		finalSVG = createProgressStyleBadge(rawSVG, ideName, displayName, bgQuery, textColorQuery)
+		finalSVG = createProgressStyleBadge(rawSVG, ideName, displayName, bgQuery, textColorQuery, isDetached)
 	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
-	w.Header().Set("Cache-Control", "public, max-age=86400, s-maxage=86400")
+	w.Header().Set("Cache-Control", cacheControlValue)
 
 	if r.Method == http.MethodHead {
 		return
@@ -488,6 +509,7 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 
 	rawSVG := string(bodyBytes)
 	_, isRaw := r.URL.Query()["raw"]
+	_, isDetached := r.URL.Query()["d"]
 	bgQuery := r.URL.Query().Get("bg")
 	if bgQuery == "" {
 		bgQuery = r.URL.Query().Get("color")
@@ -503,7 +525,7 @@ func handleFileIcon(w http.ResponseWriter, r *http.Request, iconName string) {
 		if customLabel := r.URL.Query().Get("label"); customLabel != "" {
 			displayName = customLabel
 		}
-		finalSVG = createProgressStyleBadge(rawSVG, iconName, displayName, bgQuery, textColorQuery)
+		finalSVG = createProgressStyleBadge(rawSVG, iconName, displayName, bgQuery, textColorQuery, isDetached)
 	}
 
 	w.Header().Set("Content-Type", "image/svg+xml")
